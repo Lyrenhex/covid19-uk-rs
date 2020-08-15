@@ -1,0 +1,12 @@
+[package]
+name = "covid19_uk_rs"
+version = "0.1.0"
+authors = ["Max Heaton <dh64784@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = { version = "0.10.7", features = [ "blocking", "gzip" ] }
+json = "0.12.4"
+time = "0.2.16"
