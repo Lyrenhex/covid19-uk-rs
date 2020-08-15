@@ -206,7 +206,6 @@ impl Request {
 
             let body = res.text().unwrap();
 
-            // TODO: parse body data into json (json-rust?), then place into `data`. check if there's a next page, and if there isn't (it's null), then break the loop.
             let resp = match json::parse(&body) {
                 Ok(s) => s,
                 Err(e) => panic!("Error parsing JSON: {} (body: {})", e, body),
@@ -268,9 +267,6 @@ impl Request {
             }
         }
         
-
-        println!("{:#?}", data);
-
         Ok(data)
     }
 
@@ -281,8 +277,6 @@ impl Request {
         if let Option::Some(m) = latest_by {
             url.push_str(format!("&latestBy={}", metric_to_str(m)).as_str());
         }
-
-        println!("URL: {:#?}", url);
 
         url
     }
