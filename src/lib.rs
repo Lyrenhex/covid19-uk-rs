@@ -1,15 +1,15 @@
 //! This library is not affiliated with the NHS, Public Health England, or the UK Government. This is an unofficial project to provide Rust bindings for the NHS COVID-19 API.
 //!
 //! This library provides interfaces with the NHS 'Coronavirus (COVID-19) in the UK' data APIs, provided by [gov.uk](https://coronavirus.data.gov.uk).
-//! 
+//!
 //! # Examples
-//! 
+//!
 //! ```
 //! use covid19_uk_rs;
-//! 
+//!
 //! let mut req = covid19_uk_rs::Request::new(covid19_uk_rs::AreaType::Nation, covid19_uk_rs::Metric::CumulativeCasesByPublishDate(0));
 //! req.add_filter(covid19_uk_rs::Filter::new(covid19_uk_rs::FilterValue::AreaName(String::from("england"))));
-//! 
+//!
 //! for day in req.get().unwrap() {
 //!     match day.get(0) {
 //!         Some(i) => match i {
@@ -145,7 +145,7 @@ pub type Data = Vec<Datum>;
 /// A request to the API.
 ///
 /// A request is constructed and then submitted to the API. The request may be re-used and modified, if desired, but filters and metrics cannot be removed.
-/// 
+///
 /// When a request is executed using `get` or `get_latest_by_metric`, a `Data` object is returned, which is a vector of `Datum` elements (these being vectors of `Metric` elements). Each `Datum` represents a specific day's data, with the encompassed `Metric`s storing the result data. The days are returned in the order the API provides (reverse-chronological).
 #[derive(Debug)]
 pub struct Request {
@@ -188,7 +188,7 @@ impl Request {
             let req = client.get(&url)
                             .header("Accepts", "application/json; application/xml; text/csv; application/vnd.PHE-COVID19.v1+json; application/vnd.PHE-COVID19.v1+xml")
                             .header("Content-Type", "application/json");
-            
+
             let res = match req.send() {
                 Ok(r) => r,
                 Err(e) => return Result::Err(Error::RequestErr(e)),
@@ -200,7 +200,11 @@ impl Request {
                 } else if status_code == 429 {
                     return Result::Err(Error::TooManyRequests);
                 } else {
-                    panic!("Error response from API ({}): {}", status_code, res.text().unwrap_or(String::from("No response text")));
+                    panic!(
+                        "Error response from API ({}): {}",
+                        status_code,
+                        res.text().unwrap_or(String::from("No response text"))
+                    );
                 }
             };
 
@@ -261,19 +265,27 @@ impl Request {
             }
 
             if resp["pagination"]["next"].is_null() {
-                break
+                break;
             } else {
                 page += 1
             }
         }
-        
+
         Ok(data)
     }
 
     fn construct_url(&self, latest_by: &Option<Metric>, page: &u32) -> String {
         let mut url = String::from(API_URL);
-        url.push_str(format!("?filters={}&structure=[{}]&format=json&page={}", self.filters_str(), self.metrics_str(), page).as_str());
-        
+        url.push_str(
+            format!(
+                "?filters={}&structure=[{}]&format=json&page={}",
+                self.filters_str(),
+                self.metrics_str(),
+                page
+            )
+            .as_str(),
+        );
+
         if let Option::Some(m) = latest_by {
             url.push_str(format!("&latestBy={}", metric_to_str(m)).as_str());
         }
@@ -307,7 +319,7 @@ impl Request {
             };
 
             pairs.push_str(format!("{}={}", filter.metric, value).as_str());
-        };
+        }
 
         pairs
     }
@@ -323,7 +335,7 @@ impl Request {
             multiple_metrics = true;
 
             s.push_str(format!("%22{}%22", metric_to_str(metric)).as_str());
-        };
+        }
 
         s
     }
