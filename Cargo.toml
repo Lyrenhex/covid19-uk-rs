@@ -1,6 +1,6 @@
 [package]
 name = "covid19_uk_rs"
-version = "1.0.1"
+version = "1.1.1"
 authors = ["Max Heaton <dh64784@gmail.com>"]
 edition = "2018"
 description = "Unofficial Rust library for the 'Coronavirus in the UK' data API"
