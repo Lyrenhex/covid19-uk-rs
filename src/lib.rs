@@ -27,9 +27,17 @@ const API_URL: &str = "https://api.coronavirus.data.gov.uk/v1/data";
 
 #[derive(Debug)]
 pub enum Error {
+    /// Returned if the `reqwest` library raised an error; in most cases, this
+    /// may be worth reporting as an issue on the GitHub repo.
     RequestErr(reqwest::Error),
+    /// Returned if no data was returned by the API for the request (status 
+    /// code 204).
     NoData,
+    /// Returned if the API is rate-limiting your client (status code 429).
     TooManyRequests,
+    /// Returned if the API responded with status code 500 (Internal Server 
+    /// Error).
+    APIServerError,
 }
 
 #[derive(Debug)]
@@ -71,6 +79,8 @@ impl Filter {
 }
 
 /// Valid metrics which may be requested from the NHS API.
+/// Any provided value will be ignored if providing a Metric for a 
+/// request; these values are *only* populated within responses.
 #[derive(Debug)]
 pub enum Metric {
     AreaType(AreaType),
@@ -153,6 +163,11 @@ pub struct Request {
     metrics: Vec<Metric>,
 }
 impl Request {
+    /// Creates a new Request with the provided AreaType Filter (which is
+    /// required by the API) and requesting the provided Metric.
+    /// 
+    /// More Filters and Metrics may be added with the `add_filter` and 
+    /// `add_metric` functions, respectively.
     pub fn new(area_type: AreaType, metric: Metric) -> Request {
         Request {
             filters: vec![Filter::new(FilterValue::AreaType(area_type))],
@@ -160,18 +175,54 @@ impl Request {
         }
     }
 
+    /// Adds a Filter to the request; only data matching all request Filters 
+    /// will be included in the response when executed.
     pub fn add_filter(&mut self, filter: Filter) {
         self.filters.push(filter);
     }
 
+    /// Adds a Metric to the request; data for this Metric will be included in
+    /// the response when executed.
     pub fn add_metric(&mut self, metric: Metric) {
         self.metrics.push(metric);
     }
 
+    /// Executes the request and returns the requested Metrics in a Vector, 
+    /// which is itself encapsulated in another Vector storing the Metric 
+    /// Vectors (called Datums) for each day.
+    /// 
+    /// ## Errors
+    /// 
+    /// This function may return an Error enum variant if the reqwest library 
+    /// or the API returned an error.
+    /// 
+    /// ## Panics
+    /// 
+    /// This function will panic if a status code other than 200, 204, 429, or 
+    /// 500 is returned by the API. This is not expected to occur and is likely 
+    /// a fault in the library if this does occur.
     pub fn get(&self) -> Result<Data, Error> {
         Ok(self.execute(Option::None)?)
     }
 
+    /// Executes the request and returns the requested Metrics in a Vector, 
+    /// which is itself encapsulated in another Vector storing the Metric 
+    /// Vectors (called Datums) for each day. 
+    /// 
+    /// For this function, only one day's data will be provided, and will be 
+    /// that of the latest day available for the supplied Metric; thus, the 
+    /// outermost Vector will only contain one element.
+    /// 
+    /// ## Errors
+    /// 
+    /// This function may return an Error enum variant if the reqwest library 
+    /// or the API returned an error.
+    /// 
+    /// ## Panics
+    /// 
+    /// This function will panic if a status code other than 200, 204, 429, or 
+    /// 500 is returned by the API. This is not expected to occur and is likely 
+    /// a fault in the library if this does occur.
     pub fn get_latest_by_metric(&self, metric: Metric) -> Result<Data, Error> {
         Ok(self.execute(Option::Some(metric))?)
     }
@@ -199,6 +250,8 @@ impl Request {
                     return Result::Err(Error::NoData);
                 } else if status_code == 429 {
                     return Result::Err(Error::TooManyRequests);
+                } else if status_code == 500 {
+                    return Result::Err(Error::APIServerError);
                 } else {
                     panic!(
                         "Error response from API ({}): {}",
